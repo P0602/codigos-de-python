@@ -1,0 +1,72 @@
+import requests  
+
+# Para hacer solicitudes HTTP a la web
+
+from bs4 import BeautifulSoup  
+
+# Para analizar el HTML y extraer información
+
+def obtener_precio(url):
+    """
+    Función para obtener el título y el precio de un producto en la URL dada.
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0"  # Simula un navegador real para evitar bloqueos
+    }
+    response = requests.get(url, headers=headers)  # Realiza la solicitud HTTP
+
+    # Verifica si la solicitud fue exitosa (código 200)
+    if response.status_code != 200:
+        print(f"Error al acceder a la página: {response.status_code}")
+        return None, None
+
+    # Analiza el contenido HTML de la página con codificación UTF-8
+    soup = BeautifulSoup(response.content.decode("utf-8"), "lxml")
+
+    try:
+        # Extrae el título del producto
+        titulo = soup.find("div", class_="product_main").h1.text.strip()
+
+        # Extrae el precio del producto
+        precio_raw = soup.find("p", class_="price_color").text.strip()
+        print(f"[DEBUG] Precio bruto extraído: {precio_raw}")  # Muestra el precio en crudo para depuración
+
+        # Limpia el precio eliminando símbolos (£, Â) y lo convierte en número decimal
+        precio = float(precio_raw.replace('£', '').replace('Â', '').strip())
+
+        return titulo, precio  # Devuelve el título y el precio como una tupla
+
+    except AttributeError:
+        # Si el HTML no tiene los elementos esperados, muestra un mensaje de error
+        print("No se pudo extraer el precio o título.")
+        return None, None
+    except ValueError:
+        # Si hay un error al convertir el precio en número, muestra un mensaje
+        print("No se pudo convertir el precio a número.")
+        return None, None
+
+def monitorear_precio(url, umbral):
+    """
+    Función que obtiene el precio y lo compara con un umbral definido.
+    Si el precio es menor que el umbral, muestra una alerta.
+    """
+    titulo, precio = obtener_precio(url)  # Llama a la función para obtener los datos
+
+    if titulo and precio is not None:
+        print(f"\nProducto: {titulo}")
+        print(f"Precio actual: ${precio}")
+
+        # Compara el precio con el umbral definido
+        if precio < umbral:
+            print(f"¡El precio ha bajado por debajo de £{umbral}!")
+        else:
+            print("El precio aún no baja lo suficiente.")
+    else:
+        print("Fallo al obtener los datos del producto.")
+
+# URL de prueba de un libro en books.toscrape.com
+url_producto = "http://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
+umbral_precio = 20.00  # Precio objetivo para recibir la alerta
+
+# Ejecuta el monitoreo
+monitorear_precio(url_producto, umbral_precio)
